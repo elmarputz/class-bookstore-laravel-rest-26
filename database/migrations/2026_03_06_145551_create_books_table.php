@@ -20,6 +20,9 @@ return new class extends Migration
             $table->integer('rating')->default(1);
             $table->text('description')->nullable();
             $table->timestamps();
+
+            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+
         });
     }
 
