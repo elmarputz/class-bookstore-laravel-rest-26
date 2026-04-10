@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Author;
 use App\Models\Book;
 use App\Models\Image;
 use Illuminate\Http\JsonResponse;
@@ -48,6 +49,7 @@ class BookController extends Controller
         try {
             $book = Book::create($request->all());
 
+            // save images
             if (isset($request->images) && is_array($request->images)) {
                 foreach ($request->images as $image) {
                     $book->images()->save(
@@ -59,6 +61,19 @@ class BookController extends Controller
                     );
                 }
             }
+
+            // save authors
+            if (isset($request->authors) && is_array($request->authors)) {
+                foreach ($request->authors as $auth) {
+                    $author = Author::firstOrNew([
+                        'firstName' => $auth['firstName'],
+                        'lastName' => $auth['lastName'],
+                        'id' => $auth['id']
+                        ]);
+                    $book->authors()->save($author);
+                }
+            }
+
 
             DB::commit();
 
@@ -72,6 +87,69 @@ class BookController extends Controller
 
 
     }
+
+
+    public function update(Request $request, string $isbn): JsonResponse
+    {
+        DB::beginTransaction();
+        try {
+
+            $book = Book::with(['authors', 'images', 'user'])->where('isbn', $isbn)->first();
+
+            if ($book != null) {
+                $request = $this->parseRequest($request);
+                $book->update($request->all());
+
+
+                // save images
+                $book->images()->delete();
+                if (isset($request->images) && is_array($request->images)) {
+                    foreach ($request->images as $image) {
+                        $book->images()->save(
+                            new Image(
+                                [
+                                    'url' => $image['url'],
+                                    'title' => $image['title']
+                                ])
+                        );
+                    }
+                }
+
+                // save authors
+                $ids = [];
+                if (isset($request->authors) && is_array($request->authors)) {
+                    foreach ($request->authors as $auth) {
+                            array_push($ids, $auth['id']);
+                    }
+                }
+                $book->authors()->sync($ids);
+                $book->save();
+                DB::commit();
+            }
+
+            $book1 = Book::with(['authors', 'images', 'user'])->where('isbn', $isbn)->first();
+            return response()->json($book1, 200);
+
+        }
+        catch (\Exception $e) {
+
+            DB::rollBack();
+            return response()->json("updating book failed: " . $e->getMessage(), 500);
+        }
+    }
+
+
+    public function delete(string $isbn): JsonResponse {
+        $book = Book::where('isbn', $isbn)->first();
+        if ($book != null) {
+            $book->delete();
+            return response()->json("book: " . $isbn . " deleted successfully", 200);
+        }
+        else {
+            return response()->json("book: " . $isbn . " could not be deleted, not found", 404);
+        }
+    }
+
 
 
     private function parseRequest(Request $request): Request {
