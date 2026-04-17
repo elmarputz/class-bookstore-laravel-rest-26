@@ -3,6 +3,7 @@
 use App\Http\Controllers\BookController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\AuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -15,15 +16,19 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
-});
+
+/* auth */
+Route::post('auth/login', [AuthController::class, 'login']);
 
 Route::get('/books', [BookController::class, 'index']);
 Route::get('/books/{isbn}', [BookController::class, 'findByISBN']);
 Route::get('/books/checkisbn/{isbn}', [BookController::class, 'checkISBN']);
 Route::get('/books/search/{searchTerm}', [BookController::class, 'findBySearchTerm']);
 
-Route::post('/books', [BookController::class, 'save']);
-Route::put('/books/{isbn}', [BookController::class, 'update']);
-Route::delete('/books/{isbn}', [BookController::class, 'delete']);
+Route::group(['middleware' => ['api','auth.jwt']], function () {
+    Route::post('/books', [BookController::class, 'save']);
+    Route::put('/books/{isbn}', [BookController::class, 'update']);
+    Route::delete('/books/{isbn}', [BookController::class, 'delete']);
+    Route::get('/auth/logout', [AuthController::class, 'logout']);
+});
+
