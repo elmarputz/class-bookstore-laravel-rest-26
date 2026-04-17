@@ -25,10 +25,14 @@ Route::get('/books/{isbn}', [BookController::class, 'findByISBN']);
 Route::get('/books/checkisbn/{isbn}', [BookController::class, 'checkISBN']);
 Route::get('/books/search/{searchTerm}', [BookController::class, 'findBySearchTerm']);
 
-Route::group(['middleware' => ['api','auth.jwt']], function () {
+Route::group(['middleware' => ['api','auth.jwt','auth.admin']], function () {
     Route::post('/books', [BookController::class, 'save']);
     Route::put('/books/{isbn}', [BookController::class, 'update']);
     Route::delete('/books/{isbn}', [BookController::class, 'delete']);
+});
+
+Route::group(['middleware' => ['api','auth.jwt']], function () {
     Route::get('/auth/logout', [AuthController::class, 'logout']);
 });
+
 
